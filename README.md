@@ -1,6 +1,6 @@
 # TeknoSolve - AI Interview System
 
-An intelligent interview system powered by AI that conducts technical interviews and provides detailed evaluations.
+An AI-driven platform that evaluates resumes in real time, scores them, and provides clear, actionable feedback. Designed to help job seekers improve their chances, it delivers instant, ATS-friendly insights and recommendations, empowering users to refine their profiles for maximum visibility and impact in competitive hiring processes.
 
 ## Features
 - 🎙️ Real-time speech recognition
