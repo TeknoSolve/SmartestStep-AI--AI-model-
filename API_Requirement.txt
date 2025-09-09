@@ -1,0 +1,43 @@
+# Flask and Web Framework
+Flask==2.3.3
+Flask-SocketIO==5.3.6
+python-socketio==5.8.0
+python-engineio==4.7.1
+
+# Environment and Configuration
+python-dotenv==1.0.0
+
+# Language Models and AI
+langchain==0.0.350
+langchain-groq==0.0.3
+langchain-community==0.0.10
+langchain-core==0.1.3
+langchain-huggingface==0.0.1
+groq==0.4.1
+
+# Text Processing and NLP
+spacy==3.7.2
+transformers==4.36.0
+sentence-transformers==2.2.2
+huggingface-hub==0.19.4
+
+# Vector Storage and Embeddings
+faiss-cpu==1.7.4
+
+# Speech Processing
+deepgram-sdk==3.2.7
+pyaudio==0.2.11
+
+# Data Processing
+pandas==2.1.4
+numpy==1.24.3
+
+# HTTP and Async
+aiohttp==3.9.1
+asyncio==3.4.3
+nest-asyncio==1.5.8
+
+# Utilities
+requests==2.31.0
+urllib3==2.1.0
+typing-extensions==4.8.0
