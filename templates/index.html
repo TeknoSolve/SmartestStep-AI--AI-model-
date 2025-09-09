@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Interview System</title>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .chat-container {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            background-color: #fafafa;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .ai-message {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+        }
+        .user-message {
+            background-color: #f1f8e9;
+            border-left: 4px solid #4caf50;
+        }
+        .status {
+            color: #666;
+            font-style: italic;
+        }
+        button {
+            background-color: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #1976d2;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        input[type="text"], textarea, input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 80px;
+            resize: vertical;
+        }
+        .hidden {
+            display: none;
+        }
+        .report {
+            background-color: #fff3e0;
+            border: 1px solid #ff9800;
+            border-radius: 5px;
+            padding: 15px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI Interview System</h1>
+        
+        <!-- Resume Upload Section -->
+        <div id="upload-section" class="section">
+            <h3>📄 Upload Resume</h3>
+            <input type="file" id="resume-file" accept=".txt,.pdf,.doc,.docx">
+            <button onclick="uploadResume()">Upload Resume</button>
+            <div id="upload-status"></div>
+        </div>
+
+        <!-- Interview Configuration -->
+        <div id="config-section" class="section hidden">
+            <h3>⚙️ Interview Configuration</h3>
+            <div>
+                <label>User ID:</label>
+                <input type="text" id="user-id" placeholder="Enter your name/ID">
+            </div>
+            <div>
+                <label>Interview Stage:</label>
+                <select id="interview-stage">
+                    <option value="Basic">Basic</option>
+                    <option value="Intermediate">Intermediate</option>
+                    <option value="Advanced">Advanced</option>
+                </select>
+            </div>
+            <button onclick="startInterview()">Start Interview</button>
+        </div>
+
+        <!-- Interview Chat Interface -->
+        <div id="chat-section" class="section hidden">
+            <h3>💬 Interview Chat</h3>
+            <div id="chat-container" class="chat-container"></div>
+            
+            <div>
+                <textarea id="text-input" placeholder="Type your response here..."></textarea>
+                <button onclick="sendTextResponse()">Send Response</button>
+                <button onclick="endInterview()" style="background-color: #f44336;">End Interview</button>
+            </div>
+            
+            <div class="status">
+                <p>Status: <span id="interview-status">Ready</span></p>
+            </div>
+        </div>
+
+        <!-- Final Report -->
+        <div id="report-section" class="section hidden">
+            <h3>📊 Interview Report</h3>
+            <div id="final-report" class="report"></div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let sessionId = null;
+
+        // Socket event handlers
+        socket.on('connect', function() {
+            console.log('Connected to server');
+            updateStatus('Connected');
+        });
+
+        socket.on('status', function(data) {
+            updateStatus(data.message);
+        });
+
+        socket.on('ai_response', function(data) {
+            addMessage(data.text, 'ai-message', '🤖 AI');
+        });
+
+        socket.on('interview_complete', function(data) {
+            showFinalReport(data.report);
+        });
+
+        socket.on('error', function(data) {
+            alert('Error: ' + data.message);
+        });
+
+        function uploadResume() {
+            const fileInput = document.getElementById('resume-file');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a resume file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('resume', file);
+
+            fetch('/upload-resume', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('upload-status').innerHTML = 
+                        `✅ Resume uploaded successfully!<br>
+                         Candidate Type: ${data.candidate_type}<br>
+                         Skills Found: ${data.skills_count}<br>
+                         Projects Found: ${data.projects_count}`;
+                    document.getElementById('config-section').classList.remove('hidden');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Upload failed: ' + error);
+            });
+        }
+
+        function startInterview() {
+            const userId = document.getElementById('user-id').value || 'anonymous';
+            const stage = document.getElementById('interview-stage').value;
+
+            fetch('/start-interview', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    stage: stage
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    sessionId = data.session_id;
+                    document.getElementById('chat-section').classList.remove('hidden');
+                    updateStatus('Interview started');
+                    addMessage('Hello! I am ready to begin the interview.', 'user-message', '👤 You');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Failed to start interview: ' + error);
+            });
+        }
+
+        function sendTextResponse() {
+            const textInput = document.getElementById('text-input');
+            const text = textInput.value.trim();
+            
+            if (!text || !sessionId) return;
+
+            addMessage(text, 'user-message', '👤 You');
+            textInput.value = '';
+
+            socket.emit('text_input', {
+                session_id: sessionId,
+                text: text
+            });
+
+            updateStatus('Processing...');
+        }
+
+        function endInterview() {
+            if (sessionId) {
+                socket.emit('text_input', {
+                    session_id: sessionId,
+                    text: 'goodbye'
+                });
+            }
+        }
+
+        function addMessage(text, className, sender) {
+            const chatContainer = document.getElementById('chat-container');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${className}`;
+            messageDiv.innerHTML = `<strong>${sender}:</strong><br>${text}`;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function updateStatus(status) {
+            document.getElementById('interview-status').textContent = status;
+        }
+
+        function showFinalReport(report) {
+            document.getElementById('final-report').textContent = report;
+            document.getElementById('report-section').classList.remove('hidden');
+            document.getElementById('chat-section').classList.add('hidden');
+        }
+
+        // Enter key handler for text input
+        document.getElementById('text-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendTextResponse();
+            }
+        });
+    </script>
+</body>
+</html>
